@@ -4,6 +4,7 @@ import { sql } from '../utils/db.js';
 import ErrorHandler from '../utils/errorHandler.js';
 import { TryCath } from '../utils/TryCatch.js';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 export const registerUser = TryCath(async (req, res, next) => {
   const { name, email, password, phoneNumber, role, bio } = req.body;
@@ -65,5 +66,15 @@ export const registerUser = TryCath(async (req, res, next) => {
       VALUES (${name}, ${email}, ${hashPassword}, ${phoneNumber}, ${role}, ${bio}, ${data.url}, ${data.public_id}) 
       RETURNING user_id, name, email, phone_number, role, bio, resume, created_at
     `;
+
+    registeredUser = user;
   }
+
+  const token = jwt.sign(
+    { id: registeredUser?.user_id },
+    process.env.JWT_SEC as string,
+    { expiresIn: '15d' },
+  );
+
+  res.json({ message: 'User Registered', registeredUser, token });
 });
