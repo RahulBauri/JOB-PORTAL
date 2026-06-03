@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import e from 'express';
 import { forgotPasswordTemplate } from '../template.js';
 import { publishToTopic } from '../producer.js';
+import { redisClient } from '../index.js';
 
 export const registerUser = TryCath(async (req, res, next) => {
   const { name, email, password, phoneNumber, role, bio } = req.body;
@@ -152,6 +153,10 @@ export const forgotPassword = TryCath(async (req, res, next) => {
   );
 
   const resetLink = `${process.env.FRONTEND_URL}/reset/${resetToken}`;
+
+  await redisClient.set(`forgot:${email}`, resetToken, {
+    expiration: { type: 'EX', value: 900 },
+  });
 
   const message = {
     to: email,
