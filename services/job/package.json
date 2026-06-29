@@ -15,6 +15,7 @@
   "description": "",
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
+    "axios": "^1.18.0",
     "cors": "^2.8.6",
     "datauri": "^4.1.0",
     "dotenv": "^17.4.2",

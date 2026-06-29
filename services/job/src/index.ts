@@ -23,7 +23,7 @@ async function initDb() {
 
     await sql`
       CREATE TABLE IF NOT EXISTS companies (
-        company_id SERIAL PRIMARY KEY,
+        company_id SERIAL PRIMARY KEY, 
         name VARCHAR(255) NOT NULL UNIQUE,
         description TEXT NOT NULL,
         website VARCHAR(255) NOT NULL,
