@@ -4,6 +4,7 @@ import getBuffer from '../utils/buffer.js';
 import { sql } from '../utils/db.js';
 import ErrorHandler from '../utils/errorHandler.js';
 import { TryCath } from '../utils/TryCatch.js';
+import { application } from 'express';
 
 export const myProfile = TryCath(
   async (req: AuthenticatedRequest, res, next) => {
@@ -215,5 +216,88 @@ export const deleteSkillFromUser = TryCath(
     }
 
     res.json({ message: `Skill ${skillName.trim()} was deleted successfully` });
+  },
+);
+
+export const applyForJob = TryCath(
+  async (req: AuthenticatedRequest, res, next) => {
+    const user = req.user;
+
+    if (user?.role !== 'jobseeker') {
+      return next(
+        new ErrorHandler(403, 'Forbidden: you are not allowed for this api'),
+      );
+    }
+
+    const applicant_id = user.user_id;
+
+    const resume = user.resume;
+
+    if (!resume) {
+      return next(
+        new ErrorHandler(
+          400,
+          'You need to add resume in your profile to apply for this job',
+        ),
+      );
+    }
+
+    const { job_id } = req.body;
+
+    if (!job_id) {
+      return next(new ErrorHandler(400, 'Job Id is required'));
+    }
+
+    const [job] = await sql`
+      SELECT is_active FROM jobs WHERE job_id = ${job_id}
+    `;
+
+    if (!job) {
+      return next(new ErrorHandler(404, 'No jobs with this id'));
+    }
+
+    if (!job.is_active) {
+      return next(new ErrorHandler(400, 'Job is not active'));
+    }
+
+    const now = Date.now();
+
+    const subTime = user?.subscription
+      ? new Date(user.subscription).getTime()
+      : 0;
+
+    const isSubscribed = subTime > 0;
+
+    let newApplication;
+
+    try {
+      [newApplication] = await sql`
+        INSERT INTO applications (job_id, applicant_id, applicant_email, resume, subscribed) VALUES (${job_id}, ${applicant_id}, ${user?.email}, ${resume}, ${isSubscribed})
+      `;
+    } catch (error: any) {
+      if (error.code === '23505') {
+        return next(
+          new ErrorHandler(409, 'you have already applied to this job.'),
+        );
+      }
+      return next(error);
+    }
+
+    res.json({
+      message: 'Applied for the job successfully',
+      application: newApplication,
+    });
+  },
+);
+
+export const getAllApplications = TryCath(
+  async (req: AuthenticatedRequest, res, next) => {
+    const applications = await sql`
+    SELECT a.*, j.title AS job_title, j.salary AS job_salary, j.location AS job_location 
+    FROM applications a JOIN jobs j ON a.job_id = j.job_id 
+    WHERE a.applicant_id = ${req.user?.user_id}
+  `;
+
+    res.json(applications);
   },
 );
